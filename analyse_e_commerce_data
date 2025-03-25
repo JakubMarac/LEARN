@@ -1,0 +1,129 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import matplotlib.ticker as mticker
+import seaborn as sns
+
+df = pd.read_csv("sales_data.csv")
+
+duplicates = df.duplicated().sum()
+print(f"Liczba duplikatów: {duplicates}")
+duplikaty_kolumny = df['order_id'].duplicated().sum()
+print(f"Liczba duplikatów w kolumnie 'order_id': {duplikaty_kolumny}")
+braki = df.isnull().sum()
+print(braki)
+
+df['order_date'] = pd.to_datetime(df['order_date'])
+# print(df.describe())
+
+df['total_sales'] = df['price'] * df['quantity']
+df['year'] = df['order_date'].dt.year
+df['month'] = df['order_date'].dt.month
+df['day_of_week'] = df['order_date'].dt.day_name()
+
+top_produkty = df.groupby('product_name')['total_sales'].sum().sort_values(ascending=False)
+print("top produkty:", top_produkty)
+
+total_sale_by_category = df.groupby('category')['total_sales'].sum()
+print(total_sale_by_category)
+
+monthly_trend = df.groupby('month')['total_sales'].sum()
+print(monthly_trend)
+
+top_5_locations = df.groupby('customer_location')['total_sales'].sum().sort_values(ascending=False).head(5)
+print(top_5_locations)
+
+average_order_value = df.groupby('customer_id')['total_sales'].mean().sort_values(ascending=False)
+print(average_order_value.head(5))
+
+plt.figure(figsize=(12, 6))
+bars = top_produkty.plot(kind='bar', color='blue')
+for bar in bars.patches:
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height(),
+        f'{int(bar.get_height()):,} USD',
+        ha='center', va='bottom', fontsize=10, fontweight='bold', color='black'
+    )
+def format_kwota(x, _):
+    return f'{int(x):,} USD'
+plt.gca().yaxis.set_major_formatter(mticker.FuncFormatter(format_kwota))
+plt.title("Sprzedaż produktów (wartość sprzedaży w USD)", fontsize=14)
+plt.xlabel("Produkt", fontsize=12)
+plt.ylabel("Łączna sprzedaż (USD)", fontsize=12)
+plt.xticks(rotation=45, ha='right')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.savefig('top_10_products_chart.png')
+
+
+plt.figure(figsize=(8, 8))
+plt.pie(
+    total_sale_by_category,
+    labels=total_sale_by_category.index,
+    autopct='%1.1f%%',
+    startangle=140,
+    wedgeprops={'edgecolor': 'black'},
+)
+plt.title("Udział kategorii w całkowitej sprzedaży", fontsize=14)
+plt.savefig('sales_by_category_chart.png')
+
+
+plt.figure(figsize=(10, 5))
+plt.plot(monthly_trend.index, monthly_trend.values, marker='o', linestyle='-', color='blue', linewidth=2, markersize=8)
+plt.title("Miesięczna sprzedaż w ciągu roku", fontsize=14)
+plt.xlabel("Miesiąc", fontsize=12)
+plt.ylabel("Łączna sprzedaż (USD)", fontsize=12)
+plt.xticks(ticks=range(1, 13), labels=[
+    "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
+    "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
+], rotation=45)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+sale_by_day = df.groupby('day_of_week')['total_sales'].sum().reset_index()
+day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+sale_by_day['day_of_week'] = pd.Categorical(sale_by_day['day_of_week'], categories=day_order, ordered=True)
+sale_by_day = sale_by_day.sort_values('day_of_week')
+plt.savefig('monthly_sales_chart.png')
+
+
+plt.figure(figsize=(10, 8))
+colors = plt.cm.Paired.colors
+explode = [0.05 if val == sale_by_day['total_sales'].max() else 0 for val in sale_by_day['total_sales']]
+plt.pie(
+    sale_by_day['total_sales'],
+    labels=sale_by_day['day_of_week'],
+    autopct=lambda pct: f'{pct:.1f}%\n({(pct/100)*sale_by_day["total_sales"].sum():.0f} USD)',
+    startangle=90,
+    colors=colors,
+    explode=explode,
+    wedgeprops={'edgecolor': 'black'}
+)
+plt.title('Procentowy udział sprzedaży według dni tygodnia', fontsize=16, fontweight='bold')
+plt.legend(
+    sale_by_day['day_of_week'],
+    title="Dni tygodnia",
+    loc="center left",
+    bbox_to_anchor=(1, 0.5),
+    fontsize=10
+)
+plt.tight_layout()
+plt.savefig('sales_by_day_ordered_pie_chart.png')
+
+
+correlation = df[['price', 'quantity']].corr()
+
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x=df['price'], y=df['quantity'], alpha=0.5)
+plt.title("Korelacja między ceną produktu a ilością sprzedanych sztuk")
+plt.xlabel("Cena produktu (USD)")
+plt.ylabel("Ilość sprzedanych sztuk")
+plt.grid(True)
+plt.savefig('correlation_chart.png')
+
+plt.show()
+
+print("Macierz korelacji:\n", correlation)
+
+df.to_csv("processed_sales_data.csv", index=False)
+print("Plik processed_sales_data.csv został zapisany.")
+
+
