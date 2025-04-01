@@ -1,0 +1,118 @@
+import matplotlib.pyplot as plt
+
+
+class SalesData:
+    def __init__(self, product, months, sales):
+        self.product = product
+        self.months = months
+        self.sales = sales
+
+
+class SalesInput:
+    def get_data(self):
+        product = input("Podaj nazwę produktu: ")
+        try:
+            n = int(input("Podaj liczbę miesięcy: "))
+            if n <= 0:
+                print("Liczba miesięcy musi być większa od zera")
+                exit()
+        except ValueError:
+            print("Nieprawidłowa wartość")
+            quit()
+
+        months = list(range(1, n + 1))
+        sales = []
+
+        for i in range(n):
+            try:
+                sale = float(input(f"Podaj sprzedaż dla miesiąca {i + 1}: "))
+                sales.append(sale)
+            except ValueError:
+                print("Nieprawidłowa wartość sprzedaży")
+                exit()
+
+        return SalesData(product, months, sales)
+
+
+class SalesStatistics:
+    def __init__(self, sales_data):
+        self.sales_data = sales_data
+        self.total_sales = 0
+        self.avg_sales = 0
+        self.max_sales = None
+        self.min_sales = None
+        self.month_max = None
+        self.month_min = None
+
+    def compute(self):
+        sales = self.sales_data.sales
+        self.total_sales = sum(sales)
+        self.avg_sales = sum(sales) / len(sales) if len(sales) > 0 else 0
+        self.max_sales = max(sales)
+        self.min_sales = min(sales)
+        self.month_max = self.sales_data.months[sales.index(self.max_sales)]
+        self.month_min = self.sales_data.months[sales.index(self.min_sales)]
+
+    def print_stats(self):
+        print(f"\nStatystyki sprzedaży dla produktu: {self.sales_data.product}")
+        print(f"Całkowita sprzedaż: {self.total_sales}")
+        print(f"Średnia sprzedaż: {self.avg_sales:.2f}")
+        print(f"Największa sprzedaż: {self.max_sales} w miesiącu {self.month_max}")
+        print(f"Najmniejsza sprzedaż: {self.min_sales} w miesiącu {self.month_min}")
+
+
+class SalesPlotter:
+    def __init__(self, sales_data, stats):
+        self.sales_data = sales_data
+        self.stats = stats
+
+    def plot(self):
+        months_labels = [f"M{i}" for i in self.sales_data.months]
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(months_labels, self.sales_data.sales, marker='o', label="Sprzedaż")
+
+        # Adnotacje
+        max_idx = self.sales_data.sales.index(self.stats.max_sales)
+        min_idx = self.sales_data.sales.index(self.stats.min_sales)
+
+        plt.annotate(f"Max: {self.stats.max_sales}",
+                     xy=(months_labels[max_idx], self.stats.max_sales),
+                     xytext=(max_idx, self.stats.max_sales + 0.05 * self.stats.max_sales),
+                     arrowprops=dict(facecolor='green', shrink=0.05))
+
+        plt.annotate(f"Min: {self.stats.min_sales}",
+                     xy=(months_labels[min_idx], self.stats.min_sales),
+                     xytext=(min_idx, self.stats.min_sales + 0.05 * self.stats.max_sales),
+                     arrowprops=dict(facecolor='red', shrink=0.05))
+
+        plt.title(f"Sprzedaż produktu: {self.sales_data.product}")
+        plt.xlabel("Miesiące")
+        plt.ylabel("Wartość sprzedaży")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        # 🔽 Pytanie o zapis wykresu
+        save = input("Czy chcesz zapisać wykres do pliku? (tak/nie): ").lower()
+        if save == "tak":
+            filename = input("Podaj nazwę pliku (bez rozszerzenia): ")
+            plt.savefig(f"{filename}.png")
+            print(f"Wykres zapisany jako {filename}.png")
+
+
+def main():
+    input_handler = SalesInput()
+    sales_data = input_handler.get_data()
+
+    stats = SalesStatistics(sales_data)
+    stats.compute()
+    stats.print_stats()
+
+    plotter = SalesPlotter(sales_data, stats)
+    plotter.plot()
+
+
+if __name__ == "__main__":
+    main()
